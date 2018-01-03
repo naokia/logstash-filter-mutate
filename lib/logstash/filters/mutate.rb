@@ -178,6 +178,17 @@ class LogStash::Filters::Mutate < LogStash::Filters::Base
   #     }
   config :copy, :validate => :hash
 
+  # Extract a value of the specified key from hash or array of hash field.
+  # ==========================
+  # Example:
+  # [source,ruby]
+  #     filter {
+  #       mutate {
+  #          extract => { "source_field" => "source_key" }
+  #       }
+  #     }
+  config :extract, :validate => :hash
+
   TRUE_REGEX = (/^(true|t|yes|y|1)$/i).freeze
   FALSE_REGEX = (/^(false|f|no|n|0)$/i).freeze
   CONVERT_PREFIX = "convert_".freeze
@@ -229,6 +240,7 @@ class LogStash::Filters::Mutate < LogStash::Filters::Base
     join(event) if @join
     merge(event) if @merge
     copy(event) if @copy
+    extract(event) if @extract
 
     filter_matched(event)
   end
@@ -452,6 +464,30 @@ class LogStash::Filters::Mutate < LogStash::Filters::Base
       original = event.get(src_field)
       next if original.nil?
       event.set(dest_field,LogStash::Util.deep_clone(original))
+    end
+  end
+
+  def extract(event)
+    @extract.each do |source_field, source_key|
+      original = event.get(source_field)
+
+      result = case original
+                 when Hash
+                   original[source_key]
+                 when Array
+                   original.map do | item |
+                     case item
+                       when Hash
+                         item[source_key]
+                       else
+                         item
+                     end
+                   end
+                 else
+                   @logger.debug? && @logger.debug("Can't extract something that isn't a hash or an array of hash", :field => source_field, :value => original)
+                   original
+               end
+      event.set(source_field, result)
     end
   end
 end

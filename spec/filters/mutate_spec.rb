@@ -223,6 +223,58 @@ describe LogStash::Filters::Mutate do
       end
     end
   end
+
+  describe "#extract" do
+
+    let(:config) do
+      { "extract" => { "field" => "key"} }
+    end
+
+    context "when source field is a hash" do
+      let(:attrs) { { "field" => { "key" => 1, "other_key" => 2 } } }
+
+      it "should extract value of specified key from hash" do
+        subject.filter(event)
+        expect(event.get("field")).to eq(1)
+      end
+    end
+
+    context "when source field is a hash, but there is no key and value" do
+      let(:attrs) { { "field" => { "other_key" => 2 } } }
+
+      it "should return nil" do
+        subject.filter(event)
+        expect(event.get("field")).to eq(nil)
+      end
+    end
+
+    context "when source field is an array of hash" do
+      let(:attrs) { { "field" => [{ "key" => 1, "other_key" => 2 }, {"key" => 3, "other_key" => 4}] } }
+
+      it "should extract values of specified key from array of hash" do
+        subject.filter(event)
+        expect(event.get("field")).to eq([1, 3])
+      end
+    end
+
+    context "when source field is an array of hash, but there is no key and value" do
+      let(:attrs) { { "field" => [{ "other_key" => 2 }, {"key" => 3, "other_key" => 4}] } }
+
+      it "should return nil for missing elements" do
+        subject.filter(event)
+        expect(event.get("field")).to eq([nil, 3])
+      end
+    end
+
+    context "when source field is not a hash or an array of hash" do
+      let(:attrs) { { "field" => "foo" } }
+
+      it "should not modify source field" do
+        subject.filter(event)
+        expect(event.get("field")).to eq("foo")
+      end
+    end
+  end
 end
 
 describe LogStash::Filters::Mutate do
