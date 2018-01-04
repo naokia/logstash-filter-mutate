@@ -470,19 +470,20 @@ class LogStash::Filters::Mutate < LogStash::Filters::Base
   def extract(event)
     @extract.each do |source_field, source_key|
       original = event.get(source_field)
-
       result = case original
                  when Hash
                    original[source_key]
                  when Array
-                   original.map do | item |
+                   new_array = []
+                   original.each do | item |
                      case item
                        when Hash
-                         item[source_key]
+                         new_array.push(item[source_key]) unless item[source_key].nil?
                        else
-                         item
+                         new_array.push(item)
                      end
                    end
+                   new_array
                  else
                    @logger.debug? && @logger.debug("Can't extract something that isn't a hash or an array of hash", :field => source_field, :value => original)
                    original
