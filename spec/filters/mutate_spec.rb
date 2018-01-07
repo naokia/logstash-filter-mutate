@@ -260,9 +260,9 @@ describe LogStash::Filters::Mutate do
     context "when source field is an array of hash, but there is no key and value" do
       let(:attrs) { { "field" => [{ "other_key" => 2 }, {"key" => 3, "other_key" => 4}] } }
 
-      it "should return nil for missing elements" do
+      it "should not return nil" do
         subject.filter(event)
-        expect(event.get("field")).to eq([nil, 3])
+        expect(event.get("field")).to eq([3])
       end
     end
 
