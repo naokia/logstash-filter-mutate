@@ -207,6 +207,29 @@ class LogStash::Filters::Mutate < LogStash::Filters::Base
   #     }
   config :copy, :validate => :hash
 
+  # Sets one field and associates it with the specified value. If the field already exists, its value will be replaced with the provided one.
+  # ==========================
+  # Example:
+  # [source,ruby]
+  #     filter {
+  #       mutate {
+  #          set => { "dest_field" => "value" }
+  #       }
+  #     }
+  # ==========================
+  # If non-null-valued fields exists, When set `override` option to false, such fields will not be touched.
+  # ==========================
+  # Example:
+  # [source,ruby]
+  #     filter {
+  #       mutate {
+  #          set => { "dest_field" => { "value" => "value", "override" => false } }
+  #       }
+  #     }
+  # ==========================
+
+  config :set, :validate => :hash
+
   TRUE_REGEX = (/^(true|t|yes|y|1)$/i).freeze
   FALSE_REGEX = (/^(false|f|no|n|0)$/i).freeze
   CONVERT_PREFIX = "convert_".freeze
@@ -260,6 +283,7 @@ class LogStash::Filters::Mutate < LogStash::Filters::Base
     join(event) if @join
     merge(event) if @merge
     copy(event) if @copy
+    set(event) if @set
 
     filter_matched(event)
   end
@@ -526,6 +550,24 @@ class LogStash::Filters::Mutate < LogStash::Filters::Base
       original = event.get(src_field)
       next if original.nil?
       event.set(dest_field,LogStash::Util.deep_clone(original))
+    end
+  end
+
+  def set(event)
+    @set.each do |dest_field, options|
+      original = event.get(dest_field)
+
+      override = true
+      if options.is_a?(Hash)
+        new_value = options["value"]
+        override = false if options["override"] === false
+      else
+        new_value = options
+      end
+
+      if override || original.nil?
+        event.set(dest_field, new_value)
+      end
     end
   end
 end

@@ -241,6 +241,64 @@ describe LogStash::Filters::Mutate do
       end
     end
   end
+
+  describe '#set' do
+    let(:config) do
+      { "set" => { "field" => "new value" } }
+    end
+
+    context 'when source field does not exist' do
+      it 'should create the field and set the value to it' do
+        subject.filter(event)
+        expect(event.get("field")).to eq("new value")
+      end
+    end
+
+    context 'when source field exists' do
+      let(:attrs) { { "field" => "old value" } }
+
+      it 'should update existing field' do
+        subject.filter(event)
+        expect(event.get("field")).to eq("new value")
+      end
+    end
+
+    context 'when source field exists and overriding is permitted explicitly' do
+      let(:config) do
+        { "set" => { "field" => { "value" => "new value", "override" => true } } }
+      end
+      let(:attrs) { { "field" => "old value" } }
+
+      it 'should update existing field' do
+        subject.filter(event)
+        expect(event.get("field")).to eq("new value")
+      end
+    end
+
+    context 'when overriding is not permitted' do
+      let(:config) do
+        { "set" => { "field" => { "value" => "new value", "override" => false } } }
+      end
+
+      context 'when source field exists and has non null value' do
+        let(:attrs) { { "field" => "old value" } }
+
+        it 'should do nothing' do
+          subject.filter(event)
+          expect(event.get("field")).to eq("old value")
+        end
+      end
+
+      context 'when source field exists and has null value' do
+        let(:attrs) { { "field" => nil } }
+
+        it 'should update existing field' do
+          subject.filter(event)
+          expect(event.get("field")).to eq("new value")
+        end
+      end
+    end
+  end
 end
 
 describe LogStash::Filters::Mutate do
